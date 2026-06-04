@@ -1,0 +1,18 @@
+{
+  "request_id": "req_123456789",
+  "model_version": "v1.0.0",
+  "predictions": [
+    {
+      "label": "safe_content",
+      "probability": 0.92
+    },
+    {
+      "label": "nsfw",
+      "probability": 0.05
+    },
+    {
+      "label": "violence",
+      "probability": 0.03
+    }
+  ]
+}

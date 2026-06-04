@@ -1,0 +1,237 @@
+openapi: 3.1.0
+
+info:
+  title: Vision Moderation API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.visionmoderation.com
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message, request_id]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
+
+    PredictRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+
+    PredictResponse:
+      type: object
+      required: [request_id, model_version, predictions]
+      properties:
+        request_id:
+          type: string
+        model_version:
+          type: string
+        predictions:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              probability:
+                type: number
+
+    BatchPredictRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: object
+          additionalProperties:
+            type: string
+
+    BatchPredictResponse:
+      type: object
+      required: [request_id, model_version, results]
+      properties:
+        request_id:
+          type: string
+        model_version:
+          type: string
+        results:
+          type: object
+          additionalProperties:
+            type: object
+
+    AsyncSubmitResponse:
+      type: object
+      required: [job_id, status]
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+
+    AsyncResult:
+      type: object
+      required: [job_id, status]
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, done, failed]
+
+paths:
+  /v1/predict:
+    post:
+      operationId: predictImage
+      summary: Single image prediction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictRequest'
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+            X-Model-Version:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "413":
+          description: Payload Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/predict-batch:
+    post:
+      operationId: predictBatch
+      summary: Batch prediction (max 32 images)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchPredictRequest'
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+            X-Model-Version:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchPredictResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "413":
+          description: Payload Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/predict-async:
+    post:
+      operationId: submitAsyncPrediction
+      summary: Async prediction submit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictRequest'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncSubmitResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/predictions/{job_id}:
+    get:
+      operationId: getPredictionResult
+      summary: Get async result
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncResult'
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
